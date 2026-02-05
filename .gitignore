@@ -1,0 +1,8 @@
+# .gitignore
+.env                <-- 关键！绝对不能传
+__pycache__/
+*.pyc
+.DS_Store
+workspace/          <-- 如果这里面有你的私有数据
+*.log
+*.pid
