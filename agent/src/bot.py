@@ -6,6 +6,31 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 from openai import OpenAI
 
+# 定义路径
+PROMPT_DIR = "/app/workspace/agent/promats"
+PRIVATE_PROMPT_PATH = os.path.join(PROMPT_DIR, "system_private.txt")
+DEFAULT_PROMPT_PATH = os.path.join(PROMPT_DIR, "system.txt")
+
+def load_system_prompt():
+    prompt_content = "你是一个 Python 助手。" # 兜底默认值
+
+    # 优先读私有
+    if os.path.exists(PRIVATE_PROMPT_PATH):
+        print(f"🔒 加载私有 Prompt: {PRIVATE_PROMPT_PATH}")
+        with open(PRIVATE_PROMPT_PATH, "r", encoding="utf-8") as f:
+            prompt_content = f.read()
+    # 其次读默认
+    elif os.path.exists(DEFAULT_PROMPT_PATH):
+        print(f"🌐 加载默认 Prompt: {DEFAULT_PROMPT_PATH}")
+        with open(DEFAULT_PROMPT_PATH, "r", encoding="utf-8") as f:
+            prompt_content = f.read()
+    else:
+        print(f"⚠️ 警告: 找不到 Prompt 文件！路径: {PROMPT_DIR}")
+
+    return prompt_content
+# --- 初始化 ---
+SYSTEM_PROMPT = load_system_prompt()
+
 # --- 配置区 ---
 TG_TOKEN = os.getenv("TG_TOKEN")
 if not TG_TOKEN:
@@ -32,40 +57,6 @@ PENDING_CODE = {}
 
 # LLM 客户端
 client = OpenAI(base_url=OLLAMA_URL, api_key="ollama")
-
-SYSTEM_PROMPT = """
-你是一个 Mac 自动化助手 Dofi。你可以通过生成 Python 代码来控制用户的电脑。
-你可用的库：pyautogui, time, os, subprocess, pyperclip, keyring.
-
-你拥有一个强大的技能库 `skills`，请优先使用它，而不是自己写底层代码。
-
-【可用技能 Skills】:
-1. 查看 Flink: skills.open_flink()
-2. 重启容器: skills.restart_container("容器名")
-3. 唤醒屏幕: skills.wake_up_screen()
-
-【通用规则】:
-- 如果用户问“Flink 怎么样了”，直接调用 skills.open_flink_and_screenshot()。
-- 只有当没有现成技能时，才使用 pyautogui 写代码。
-
-【安全规范】：
-❌ 严禁在代码中明文写入密码！
-✅ 必须使用 keyring 获取密码：
-   password = keyring.get_password("system_login", "你的账号标识")
-   pyautogui.write(password)
-
-【关键规则】：
-1. 输入英文：使用 pyautogui.write("text", interval=0.1)
-2. 输入中文/特殊字符：必须使用粘贴法！
-   pyperclip.copy("你好")
-   pyautogui.hotkey("command", "v")
-3. 打开软件：os.system("open -a 'Google Chrome'")
-4. 按键：pyautogui.press("enter")
-5. 登陆场景：先点击输入框，再 write 账号，按 tab，再 keyring 取密码 write，如果有三个输入框，还需要跟我确认实时六位数字的验证码，最后 enter。
-
-当用户提出需求时，请直接生成可执行的 Python 代码块。
-代码必须包裹在 ```python 和 ``` 之间。不要解释，直接给代码。
-"""
 
 async def send_screenshot_result(bot, chat_id):
     await bot.send_message(chat_id=chat_id, text="📸 正在获取执行结果截图...")

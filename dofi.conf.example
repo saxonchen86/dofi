@@ -1,0 +1,11 @@
+# 工作目录 (根据你的实际情况修改)
+WORKSPACE_DIR="$HOME/dofi_workspace"
+
+# 文件名定义
+MAC_SERVER_SCRIPT="mac_server.py"
+DOCKER_CONTAINER="dofi"
+DOCKER_BOT_SCRIPT="/app/workspace/bot.py"
+
+# 日志与PID路径
+LOG_FILE="$WORKSPACE_DIR/dofi.log"
+PID_FILE="$WORKSPACE_DIR/dofi.pid"

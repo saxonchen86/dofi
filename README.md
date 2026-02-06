@@ -25,7 +25,7 @@ Dofi is an AI Agent architecture designed for **Mac M-series chips**. It separat
 
 ```bash
 # Clone the repo
-git clone [https://github.com/your-username/dofi.git](https://github.com/your-username/dofi.git)
+git clone [https://github.com/saxonchen86/dofi.git](https://github.com/your-username/dofi.git)
 cd dofi
 
 # Configure

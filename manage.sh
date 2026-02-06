@@ -1,12 +1,32 @@
 #!/bin/bash
 
 # --- 配置区 ---
-WORKSPACE_DIR="$HOME/dofi_workspace"
-MAC_SERVER_SCRIPT="mac_server.py"
-DOCKER_CONTAINER="dofi"
-DOCKER_BOT_SCRIPT="/app/workspace/tg_bot.py"
-LOG_FILE="$WORKSPACE_DIR/dofi.log"
-PID_FILE="$WORKSPACE_DIR/dofi.pid"
+# --- 1. 加载配置文件 ---
+# --- 1. 智能定位 (解决找不到配置文件的关键) ---
+# 获取脚本所在的真实目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+CONF_FILE="$SCRIPT_DIR/dofi.conf"
+
+get_pid() {
+    if [ -f "$PID_FILE" ]; then
+        cat "$PID_FILE"
+    fi
+}
+
+# --- 2. 加载配置 ---
+if [ -f "$CONF_FILE" ]; then
+    # 进入项目目录运行，防止相对路径出错
+    cd "$SCRIPT_DIR"
+    source "$CONF_FILE"
+else
+    echo "❌ 错误: 找不到配置文件: $CONF_FILE"
+    exit 1
+fi
+# --- 2. 检查必要变量是否加载 ---
+if [ -z "$WORKSPACE_DIR" ]; then
+    echo "❌ 配置错误: WORKSPACE_DIR 未定义"
+    exit 1
+fi
 
 # --- 颜色定义 ---
 GREEN='\033[0;32m'
@@ -19,9 +39,9 @@ function start_dofi() {
 
     # 1. 启动 Mac 本地服务 (Backend)
     if pgrep -f "$MAC_SERVER_SCRIPT" > /dev/null; then
-        echo -e "   - 手 (Mac Server) 已经在运行了。"
+        echo -e "   - 手 (Server) 已经在运行了。"
     else
-        echo -e "   - 正在启动 手 (Mac Server)..."
+        echo -e "   - 正在启动 手 (Server)..."
         cd "$WORKSPACE_DIR"
         # 后台运行并将日志输出到文件
         nohup ~/myenv3.13/bin/python3.13 "$MAC_SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
@@ -51,10 +71,10 @@ function stop_dofi() {
     if [ -f "$PID_FILE" ]; then
         kill $(cat "$PID_FILE") > /dev/null 2>&1
         rm "$PID_FILE"
-        echo -e "   - 手 (Mac Server) 已停止。"
+        echo -e "   - 手 (Server) 已停止。"
     else
         # 双重保险：按文件名杀
-        pkill -f "$MAC_SERVER_SCRIPT" > /dev/null 2>&1 && echo -e "   - 手 (Mac Server) 已停止。"
+        pkill -f "$MAC_SERVER_SCRIPT" > /dev/null 2>&1 && echo -e "   - 手 (Server) 已停止。"
     fi
 
     # 2. 停止 Docker 里的进程
@@ -65,21 +85,34 @@ function stop_dofi() {
 }
 
 function status_dofi() {
-    echo -e "${YELLOW}🔍 检查 dofi 状态:${NC}"
-    
-    # 检查 Mac Server
-    if pgrep -f "$MAC_SERVER_SCRIPT" > /dev/null; then
-        echo -e "   - ✋ 手 (Mac Server): ${GREEN}运行中${NC} (Port 5001)"
-    else
-        echo -e "   - ✋ 手 (Mac Server): ${RED}未运行${NC}"
-    fi
+             echo "🔍 检查 dofi 状态:"
 
-    # 检查 Docker Bot
-    if docker exec "$DOCKER_CONTAINER" pgrep -f tg_bot.py > /dev/null 2>&1; then
-        echo -e "   - 🧠 脑 (Docker Bot): ${GREEN}运行中${NC}"
-    else
-        echo -e "   - 🧠 脑 (Docker Bot): ${RED}未运行${NC}"
-    fi
+             # --- 1. 检查手 (Server) ---
+             PID=$(get_pid)
+             if [ -n "$PID" ] && ps -p "$PID" > /dev/null; then
+                 echo -e "   - ✋ 手 (Server): ${GREEN}运行中 (PID $PID)${NC}"
+             else
+                 echo -e "   - ✋ 手 (Server): ${RED}未运行${NC}"
+             fi
+
+             # --- 2. 检查脑 (Docker Bot) ---
+             # 修复逻辑：使用 docker top 而不是 docker exec ps
+             # 只要容器里有 python 进程在跑 bot 脚本，就算运行中
+             BOT_FILENAME=$(basename "$DOCKER_BOT_SCRIPT") # 获取文件名, 如 bot.py
+
+             # 先看容器活着没
+             if ! docker ps | grep -q "$DOCKER_CONTAINER"; then
+                  echo -e "   - 🧠 脑 (Docker Bot): ${RED}容器未启动${NC}"
+                  return
+             fi
+
+             # 再看进程 (docker top 不需要容器内安装 ps)
+             if docker top "$DOCKER_CONTAINER" | grep -q "$BOT_FILENAME"; then
+                 echo -e "   - 🧠 脑 (Docker Bot): ${GREEN}运行中${NC}"
+             else
+                 echo -e "   - 🧠 脑 (Docker Bot): ${RED}未运行${NC} (容器活着，但 Python 脚本挂了)"
+                 echo "     建议查看日志: dog log"
+             fi
 }
 
 function show_log() {
@@ -109,7 +142,7 @@ case "$1" in
     *)
         echo "用法: dofi {start|stop|restart|status|log}"
         echo "示例: dofi start  (叫它上班)"
-        echo "      do f i stop   (叫它下班)"
+        echo "     dofi stop   (叫它下班)"
         exit 1
         ;;
 esac

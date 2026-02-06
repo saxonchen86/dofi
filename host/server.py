@@ -4,9 +4,9 @@ import time
 import os
 import subprocess
 import pyperclip 
-import keyring # 导入 keyring 库 需要用到自动登录才会用到
+import keyring
 from io import BytesIO
-import skills  # <--- 1. 导入你的新文件 (确保在同一目录下)
+import skills
 
 app = Flask(__name__)
 
@@ -18,7 +18,9 @@ SAFE_GLOBALS = {
     "subprocess": subprocess,
     "pyperclip": pyperclip,
     "keyring": keyring,
-    "skills": skills  # <--- 3. 核心：让 AI 能认识这个对象
+    "skills": skills,
+    "search": skills.google_search,
+    "search": skills.send_alert
 }
 
 @app.route('/execute', methods=['POST'])
@@ -33,17 +35,13 @@ def execute_code():
         print(f"❌ 执行报错: {e}")
         return jsonify({"status": "error", "msg": str(e)}), 500
 
-# mac_server.py (只修改 screenshot 部分，其他不用动)
-
 @app.route('/screenshot', methods=['GET'])
 def get_screenshot():
     try:
         img = pyautogui.screenshot()
-        
         # --- 核心修复：如果是 RGBA 格式，强制转为 RGB ---
         if img.mode == 'RGBA':
             img = img.convert('RGB')
-        # ---------------------------------------------
 
         img_io = BytesIO()
         img.save(img_io, 'JPEG', quality=70)
@@ -54,7 +52,6 @@ def get_screenshot():
         return jsonify({"status": "error", "msg": str(e)}), 500
 
 if __name__ == '__main__':
-    # 端口 5001
     print("🚀 Mac Server running on port 5001...")
     app.run(host='0.0.0.0', port=5001)
 

@@ -1,8 +1,11 @@
 # .gitignore
 .env                <-- 关键！绝对不能传
+dofi.conf
 __pycache__/
 *.pyc
 .DS_Store
 workspace/          <-- 如果这里面有你的私有数据
 *.log
 *.pid
+workspace/prompts/system_private.txt
+/Users/ad/dofi/agent/promats/system_private.txt
