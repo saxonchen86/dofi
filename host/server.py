@@ -18,9 +18,8 @@ SAFE_GLOBALS = {
     "subprocess": subprocess,
     "pyperclip": pyperclip,
     "keyring": keyring,
-    "skills": skills,
-    "search": skills.google_search,
-    "search": skills.send_alert
+    "skills": skills
+    # "search": skills.send_alert
 }
 
 @app.route('/execute', methods=['POST'])
@@ -54,7 +53,6 @@ def get_screenshot():
 if __name__ == '__main__':
     print("🚀 Mac Server running on port 5001...")
     app.run(host='0.0.0.0', port=5001)
-
 
 @app.route('/')
 def index():

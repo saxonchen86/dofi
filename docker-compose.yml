@@ -5,7 +5,7 @@ services:
     image: dofi_image 
     restart: always
     # 核心：Orbstack 环境下使用 host 模式
-    # 这样 dofi 可以直接访问你 Mac 上的 Flink(8081) 和 Ollama(11434)
+    # 这样 dofi 可以直接访问你本地上的 Flink(8081) 和 Ollama(11434)
     network_mode: "host" 
     env_file:
       - .env  # 让 Docker 读取本地的 .env 文件
@@ -13,7 +13,7 @@ services:
       - TG_TOKEN=${TG_TOKEN}
       - ALLOWED_USER_ID=${ALLOWED_USER_ID}
       # --- 关键修改：适配你的 Qwen3-Coder ---
-      # 指向 Orbstack 宿主机（你的 Mac）上的 Ollama 端口
+      # 指向 Orbstack 宿主机上的 Ollama 端口
       - OPENAI_API_BASE=http://host.docker.internal:11434/v1
       - OPENAI_API_KEY=ollama  # Ollama 不校验 Key，随便填
       # 你的本地模型名称，必须和 ollama list 显示的一模一样

@@ -3,8 +3,7 @@ import os
 import time
 import pyautogui
 import subprocess
-from serpapi import GoogleSearch
-import requests
+
 # --- 技能 1: 打开 Flink 面板并截图 ---
 def open_flink():
     # 1. 强制使用 Chrome 打开，确保环境一致
@@ -34,19 +33,10 @@ def wake_up_screen():
     pyautogui.press('shift')
     return "Screen Waked"
 
-def google_search(query):
 
-    print(f"🔎 正在搜索: {query}")
-    search = GoogleSearch({"q": query, "api_key": "你的SERP_API_KEY"})
-    results = search.get_dict()
-
-    # 提取前3条结果返回给 Brain
-    snippets = [r["snippet"] for r in results.get("organic_results", [])[:3]]
-    return "\n".join(snippets)
-
-def send_alert(msg):
-    """发送报警到钉钉/飞书"""
-    webhook = "你的_WEBHOOK_URL"
-    data = {"msgtype": "text", "text": {"content": f"🚨 Dofi 报警: {msg}"}}
-    requests.post(webhook, json=data)
-    return "报警已发送"
+# def send_alert(msg):
+#     """发送报警到钉钉/飞书"""
+#     webhook = "你的_WEBHOOK_URL"
+#     data = {"msgtype": "text", "text": {"content": f"🚨 Dofi 报警: {msg}"}}
+#     requests.post(webhook, json=data)
+#     return "报警已发送"
