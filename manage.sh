@@ -22,6 +22,13 @@ else
     echo "❌ 错误: 找不到配置文件: $CONF_FILE"
     exit 1
 fi
+
+# --- 2.1 加载 .env 环境变量（供监控脚本等使用） ---
+ENV_FILE="$SCRIPT_DIR/.env"
+if [ -f "$ENV_FILE" ]; then
+    # 过滤掉注释行
+    export $(grep -v '^#' "$ENV_FILE" | xargs)
+fi
 # --- 2. 检查必要变量是否加载 ---
 if [ -z "$WORKSPACE_DIR" ]; then
     echo "❌ 配置错误: WORKSPACE_DIR 未定义"
@@ -46,6 +53,17 @@ function start_dofi() {
         # 后台运行并将日志输出到文件
         nohup ~/myenv3.13/bin/python3.13 "$MAC_SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
         echo $! > "$PID_FILE"
+        sleep 2
+    fi
+
+    # 1.1 启动 Flink 监控脚本
+    if pgrep -f "$FLINK_MONITOR_SCRIPT" > /dev/null; then
+        echo -e "   - Flink 监控脚本 已经在运行了。"
+    else
+        echo -e "   - 正在启动 Flink 监控脚本..."
+        cd "$WORKSPACE_DIR"
+        nohup ~/myenv3.13/bin/python3.13 "$FLINK_MONITOR_SCRIPT" > "$FLINK_MONITOR_LOG_FILE" 2>&1 &
+        echo $! > "$FLINK_MONITOR_PID_FILE"
         sleep 2
     fi
 
@@ -77,6 +95,15 @@ function stop_dofi() {
         pkill -f "$MAC_SERVER_SCRIPT" > /dev/null 2>&1 && echo -e "   - 手 (Server) 已停止。"
     fi
 
+    # 1.1 停止 Flink 监控脚本
+    if [ -f "$FLINK_MONITOR_PID_FILE" ]; then
+        kill $(cat "$FLINK_MONITOR_PID_FILE") > /dev/null 2>&1
+        rm "$FLINK_MONITOR_PID_FILE"
+        echo -e "   - Flink 监控脚本 已停止。"
+    else
+        pkill -f "$FLINK_MONITOR_SCRIPT" > /dev/null 2>&1 && echo -e "   - Flink 监控脚本 已停止。"
+    fi
+
     # 2. 停止 Docker 里的进程
     docker exec "$DOCKER_CONTAINER" pkill -f tg_bot.py > /dev/null 2>&1
     echo -e "   - 脑 (Docker Bot) 已休眠。"
@@ -93,6 +120,15 @@ function status_dofi() {
                  echo -e "   - ✋ 手 (Server): ${GREEN}运行中 (PID $PID)${NC}"
              else
                  echo -e "   - ✋ 手 (Server): ${RED}未运行${NC}"
+             fi
+
+             # --- 1.1 检查 Flink 监控脚本 ---
+             if [ -f "$FLINK_MONITOR_PID_FILE" ] && ps -p "$(cat "$FLINK_MONITOR_PID_FILE")" > /dev/null 2>&1; then
+                 echo -e "   - 📈 Flink 监控: ${GREEN}运行中 (PID $(cat "$FLINK_MONITOR_PID_FILE"))${NC}"
+             elif pgrep -f "$FLINK_MONITOR_SCRIPT" > /dev/null 2>&1; then
+                 echo -e "   - 📈 Flink 监控: ${GREEN}运行中 (通过进程名检测)${NC}"
+             else
+                 echo -e "   - 📈 Flink 监控: ${RED}未运行${NC}"
              fi
 
              # --- 2. 检查脑 (Docker Bot) ---

@@ -75,6 +75,50 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     
+    # ✅ 特殊指令：Flink 相关（直接调 Host API，无需走 LLM）
+    lowered = user_text.lower().strip()
+    is_flink_status = (
+        lowered in ["/flink_status", "flink status", "查看flink状态"]
+        or ("flink" in lowered and "状态" in user_text)
+    )
+    is_flink_check = (
+        lowered in ["/flink_check", "flink check", "检查flink", "检查 flink"]
+        or ("flink" in lowered and "检查" in user_text)
+    )
+    if is_flink_status:
+        try:
+            res = requests.get(f"{MAC_SERVER_URL}/flink/status", timeout=15)
+            if res.status_code == 200:
+                data = res.json()
+                text = data.get("data") or "空结果"
+                await context.bot.send_message(chat_id=chat_id, text=text)
+            else:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"❌ 获取 Flink 状态失败: {res.status_code} {res.text[:200]}",
+                )
+        except Exception as e:
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ 请求 Flink 状态异常: {e}")
+        return
+    if is_flink_check:
+        if user_id != ALLOWED_USER_ID:
+            await context.bot.send_message(chat_id=chat_id, text="⛔️ 仅授权用户可执行 Flink 检查/自愈。")
+            return
+        try:
+            res = requests.post(f"{MAC_SERVER_URL}/flink/check", json={}, timeout=20)
+            if res.status_code == 200:
+                data = res.json()
+                text = data.get("data") or "空结果"
+                await context.bot.send_message(chat_id=chat_id, text=text)
+            else:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"❌ Flink 检查失败: {res.status_code} {res.text[:200]}",
+                )
+        except Exception as e:
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ 请求 Flink 检查异常: {e}")
+        return
+
     # 1. 安全校验
     if user_id != ALLOWED_USER_ID:
         await context.bot.send_message(chat_id=chat_id, text="⛔️ 权限不足")
