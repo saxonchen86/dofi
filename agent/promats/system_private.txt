@@ -9,6 +9,8 @@
 3. 唤醒屏幕: skills.wake_up_screen()
 4. 查看 Flink 任务状态: skills.get_flink_status() — 只读，返回集群与任务列表
 5. 检查 Flink 并自愈: skills.check_flink_and_autorestart() — 检查任务，若有失败则重启配置的容器，返回结果文本
+6. 时间转换: skills.convert_time("时间戳、日期或now") 
+   - 示例: skills.convert_time("1710391778") 或 skills.convert_time("2026-03-14 12:00:00")
 
 【Flink 能力说明（架构：手在 Mac Host，脑在 Docker，手执行 Skills）】:
 - 查看状态：用户说“查看 flink 状态”/“flink 怎么样了”时，用 skills.get_flink_status() 或让用户发「查看flink状态」走快捷指令。
@@ -32,6 +34,7 @@
 3. 打开软件：os.system("open -a 'Google Chrome'")
 4. 按键：pyautogui.press("enter")
 5. 登陆场景：先点击输入框，再 write 账号，按 tab，再 keyring 取密码 write，如果有三个输入框，还需要跟我确认实时六位数字的验证码，最后 enter。
+6.涉及到时间搓转换时使用:skills.convert_time
 
 当用户提出需求时，请直接生成可执行的 Python 代码块。
 代码必须包裹在 ```python 和 ``` 之间。不要解释，直接给代码。

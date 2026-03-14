@@ -6,6 +6,7 @@ import pyautogui
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+
 # ==========================================
 # ⚙️ 配置区
 # ==========================================
@@ -164,3 +165,47 @@ def check_flink_and_autorestart():
             msg_lines.append(f"\n⚠️ **跳过**: {job_name} \n└─ 原因: 未在 job_mapping.txt 找到对应的 AppID，请补充。")
 
     return "\n".join(msg_lines)
+
+import datetime
+
+def convert_time(time_input):
+    """
+    [技能] 时间戳与日期时间双向互转
+    """
+    try:
+        time_input = str(time_input).strip()
+        result_str = "" # 用一个变量接住结果
+        
+        if time_input.lower() == 'now':
+            now = datetime.datetime.now()
+            ts = int(now.timestamp())
+            result_str = f"当前时间: {now.strftime('%Y-%m-%d %H:%M:%S')} | 时间戳(秒): {ts} | 时间戳(毫秒): {ts*1000}"
+
+        elif '-' in time_input or '/' in time_input:
+            fmt = '%Y-%m-%d %H:%M:%S' if ':' in time_input else '%Y-%m-%d'
+            time_input = time_input.replace('/', '-') 
+            dt = datetime.datetime.strptime(time_input, fmt)
+            ts = int(dt.timestamp())
+            result_str = f"日期: {time_input} => 时间戳(秒): {ts} | 时间戳(毫秒): {ts*1000}"
+        
+        elif time_input.isdigit() or (time_input.startswith('-') and time_input[1:].isdigit()):
+            ts = int(time_input)
+            if ts > 1e11:  
+                ts = ts / 1000.0
+                unit = "毫秒"
+            else:
+                unit = "秒"
+            dt = datetime.datetime.fromtimestamp(ts)
+            result_str = f"时间戳({unit}): {time_input} => 日期时间: {dt.strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        else:
+            result_str = f"❌ 无法识别的时间格式: {time_input}。请传入时间戳、日期格式或 'now'"
+            
+        # ⚠️ 核心防呆：无论 AI 加没加 print()，我们自己在宿主机上先 print 一遍，确保内容能被截获
+        print(result_str)
+        return result_str
+    
+    except Exception as e:
+        err = f"❌ 时间转换失败: {str(e)}"
+        print(err)
+        return err

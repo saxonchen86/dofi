@@ -18,23 +18,57 @@ SAFE_GLOBALS = {
     "subprocess": subprocess,
     "pyperclip": pyperclip,
     "keyring": keyring,
-    "skills": skills
+    "skills": skills,
+    "convert_time": skills.convert_time
     # "search": skills.send_alert
 }
 
 
+# @app.route('/execute', methods=['POST'])
+# def execute_code():
+#     try:
+#         code = request.json.get('code', '')
+#         print(f"⚡️ 执行代码:\n{code}")
+#         # 执行代码
+#         exec(code, SAFE_GLOBALS)
+#         return jsonify({"status": "success", "msg": "Executed"})
+#     except Exception as e:
+#         print(f"❌ 执行报错: {e}")
+#         return jsonify({"status": "error", "msg": str(e)}), 500
+
+import io
+from contextlib import redirect_stdout
+from flask import request, jsonify
+
+# ... (其他代码保持不变) ...
+
 @app.route('/execute', methods=['POST'])
 def execute_code():
-    try:
-        code = request.json.get('code', '')
-        print(f"⚡️ 执行代码:\n{code}")
-        # 执行代码
-        exec(code, SAFE_GLOBALS)
-        return jsonify({"status": "success", "msg": "Executed"})
-    except Exception as e:
-        print(f"❌ 执行报错: {e}")
-        return jsonify({"status": "error", "msg": str(e)}), 500
+    data = request.json
+    code = data.get('code', '')
 
+    # 1. 创建一个“内存里的文本框”来接住 print 吐出来的字
+    f = io.StringIO()
+    
+    # 2. 将所有的 print 输出强制重定向到 f 中
+    with redirect_stdout(f):
+        try:
+            # 执行 AI 发过来的代码 (注意 SAFE_GLOBALS 是你注册技能的地方)
+            exec(code, SAFE_GLOBALS)
+            status = "success"
+        except Exception as e:
+            # 如果报错，也打印出来，这样也会被拦截并返回给 Telegram
+            print(f"❌ 代码执行报错: {str(e)}")
+            status = "error"
+
+    # 3. 把拦截到的所有文字提取出来
+    output_text = f.getvalue().strip()
+
+    # 4. 连同状态一起打包，扔回给 Docker 里的 Bot
+    return jsonify({
+        "status": status,
+        "output": output_text  # 👈 这是最关键的，把文字传回去！
+    })
 
 @app.route('/screenshot', methods=['GET'])
 def get_screenshot():
