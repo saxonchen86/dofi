@@ -1,0 +1,7 @@
+# 绝对不要让 Claude 读这些目录
+.venv/
+.idea/
+.vscode/
+__pycache__/
+*.log
+.git/

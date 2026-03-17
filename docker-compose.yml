@@ -3,7 +3,7 @@ services:
     build: ./agent
     container_name: dofi
     image: dofi_image 
-    restart: always
+    # restart: always
     # 核心：Orbstack 环境下使用 host 模式
     # 这样 dofi 可以直接访问你本地上的 Flink(8081) 和 Ollama(11434)
     network_mode: "host" 

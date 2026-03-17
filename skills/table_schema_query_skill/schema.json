@@ -1,0 +1,14 @@
+{
+  "name": "table_schema_query_skill",
+  "description": "处理表格关联查询，从 Milvus 中获取表格 schema 信息并生成正确的 SQL 语句",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "用户关于表格关联查询的问题"
+      }
+    },
+    "required": ["query"]
+  }
+}
