@@ -4,11 +4,10 @@ services:
     container_name: dofi
     image: dofi_image 
     # restart: always
-    # 核心：Orbstack 环境下使用 host 模式
-    # 这样 dofi 可以直接访问你本地上的 Flink(8081) 和 Ollama(11434)
-    network_mode: "host" 
     env_file:
       - .env  # 让 Docker 读取本地的 .env 文件
+    networks:
+      - big-data-network
     environment:
       - TG_TOKEN=${TG_TOKEN}
       - ALLOWED_USER_ID=${ALLOWED_USER_ID}
@@ -21,12 +20,17 @@ services:
       
       # 其他配置
       - ENV_TYPE=production
-      - FLINK_JM_URL=http://localhost:8081
-      - KAFKA_BROKER=localhost:9092
+      - FLINK_JM_URL=http://flink-jobmanager:8081
+      - KAFKA_BROKER=kafka:29092
       
+      - MILVUS_URL=milvus:19530
+
     volumes:
       # 控制 Docker
       - /var/run/docker.sock:/var/run/docker.sock
       # 挂载工作目录（生成的代码存在这里）
       - .:/app/workspace
       
+networks:
+  big-data-network:
+    external: true

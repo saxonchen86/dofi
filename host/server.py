@@ -3,9 +3,15 @@ import pyautogui
 import time
 import os
 import subprocess
-import pyperclip 
+import pyperclip
 import keyring
 from io import BytesIO
+
+# 添加技能目录到 Python 路径，确保能够正确导入技能模块
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'skills'))
+
+# 现在可以安全地导入技能模块
 import skills
 
 app = Flask(__name__)
@@ -23,18 +29,6 @@ SAFE_GLOBALS = {
     # "search": skills.send_alert
 }
 
-
-# @app.route('/execute', methods=['POST'])
-# def execute_code():
-#     try:
-#         code = request.json.get('code', '')
-#         print(f"⚡️ 执行代码:\n{code}")
-#         # 执行代码
-#         exec(code, SAFE_GLOBALS)
-#         return jsonify({"status": "success", "msg": "Executed"})
-#     except Exception as e:
-#         print(f"❌ 执行报错: {e}")
-#         return jsonify({"status": "error", "msg": str(e)}), 500
 
 import io
 from contextlib import redirect_stdout
