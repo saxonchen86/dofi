@@ -9,3 +9,6 @@ workspace/          <-- 如果这里面有你的私有数据
 *.pid
 workspace/prompts/system_private.txt
 /Users/ad/dofi/agent/promats/system_private.txt
+# Secrets
+.env
+.env.local
