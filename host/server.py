@@ -18,6 +18,7 @@ app = Flask(__name__)
 
 # 定义允许 AI 使用的工具库
 SAFE_GLOBALS = {
+    "skills": skills,  # 现在这里包含了 /skills 下所有的动态函数
     "pyautogui": pyautogui,
     "time": time,
     "os": os,

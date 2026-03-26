@@ -86,10 +86,6 @@ def _restart_via_streampark(job_name, app_id):
 # ==========================================
 # 🚀 Dofi Skills
 # ==========================================
-def open_flink():
-    url = FLINK_JOBMANAGER_URL
-    subprocess.run(["open", "-a", "Google Chrome", url])
-    return "Flink Dashboard Opened"
 
 def restart_container(container_name):
     cmd = f"/usr/local/bin/docker restart {container_name}"
@@ -98,10 +94,6 @@ def restart_container(container_name):
         return f"✅ 容器 {container_name} 重启成功"
     else:
         return f"❌ 重启失败: {result.stderr}"
-
-def wake_up_screen():
-    pyautogui.press('shift')
-    return "Screen Waked"
 
 def get_flink_status():
     try:
