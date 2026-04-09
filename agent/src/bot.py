@@ -1,4 +1,4 @@
-# workspace/tg_bot.py (动态技能感知 + 架构师优化版)
+# workspace/tg_bot.py (动态技能感知 + 架构师优化版 + 资源监控)
 import os
 import sys
 import logging
@@ -13,6 +13,8 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 from core.prompt_generator import PromptGenerator
+# 🚀 引入资源监控模块
+from skills.monitor import start_monitor_thread
 
 # 2. 路径配置与生成器初始化
 PROMPT_DIR = os.path.join(BASE_DIR, "agent/prompts")
@@ -26,9 +28,8 @@ generator = PromptGenerator(SKILLS_DIR)
 def get_dynamic_system_prompt(user_query: str = ""):
     """
     根据用户输入的关键词，动态构建最精简、最相关的 System Prompt。
-    这是 50w 年薪架构中为了降低 Token 成本和提高响应精准度的核心逻辑。
+    这是高并发架构中为了降低 Token 成本和提高响应精准度的核心逻辑。
     """
-    # A. 基础模板加载
     prompt_template = "你是一个 Python 助手。" 
     
     if os.path.exists(PRIVATE_PROMPT_PATH):
@@ -40,14 +41,12 @@ def get_dynamic_system_prompt(user_query: str = ""):
     else:
         print(f"⚠️ 警告: 找不到模板文件，使用兜底配置")
 
-    # B. 动态分发技能 (核心升级点：按需注入)
     try:
         skills_block = generator.generate_contextual_skills(user_query)
     except Exception as e:
         print(f"❌ 动态技能生成异常: {e}")
         skills_block = "【注意】技能库加载失败，请优先使用标准库。"
 
-    # C. 占位符替换
     placeholder = "{{SKILLS_BLOCK}}"
     if placeholder in prompt_template:
         full_prompt = prompt_template.replace(placeholder, skills_block)
@@ -73,6 +72,26 @@ MODEL_NAME = os.getenv("MODEL_NAME", "qwen3-coder:30b")
 PENDING_CODE = {}
 client = OpenAI(base_url=OLLAMA_URL, api_key="ollama")
 
+# ==========================================
+# 🚀 架构级解耦：同步告警发送器 (供后台监控线程调用)
+# ==========================================
+def sync_alert_sender(text):
+    """
+    使用 Requests 同步发送告警。
+    避免后台 Thread 干扰 main thread 的 asyncio 事件循环。
+    """
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": ALLOWED_USER_ID,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except Exception as e:
+        print(f"❌ 后台告警发送失败: {e}")
+# ==========================================
+
 async def send_screenshot_result(bot, chat_id):
     """获取并发送 Mac 端的执行截图"""
     try:
@@ -90,14 +109,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     
-    # 1. 权限与特殊指令校验
     if user_id != ALLOWED_USER_ID:
         await context.bot.send_message(chat_id=chat_id, text="⛔️ 权限不足")
         return
 
     lowered = user_text.lower()
     
-    # Flink 快捷指令处理
     if "flink" in lowered and ("状态" in user_text or "status" in lowered):
         try:
             res = requests.get(f"{MAC_SERVER_URL}/flink/status", timeout=15)
@@ -107,7 +124,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=chat_id, text=f"❌ Flink 状态请求异常: {e}")
         return
 
-    # 2. 任务确认逻辑 (ok/确定)
     if user_id in PENDING_CODE:
         if lowered in ["ok", "确定", "yes", "执行", "go"]:
             code_to_run = PENDING_CODE.pop(user_id)
@@ -128,11 +144,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             del PENDING_CODE[user_id]
             await context.bot.send_message(chat_id=chat_id, text="🚫 任务已取消，正在重新思考...")
 
-    # 3. 处理新需求：动态生成 Prompt 并调用 LLM
     await context.bot.send_message(chat_id=chat_id, text="🤖 正在分析需求...")
     
     try:
-        # 【架构升级】：根据用户当前输入，动态加载最相关的技能
         current_system_prompt = get_dynamic_system_prompt(user_text)
         
         completion = client.chat.completions.create(
@@ -144,7 +158,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_reply = completion.choices[0].message.content
         
-        # 代码块解析
         code = ""
         if "```python" in ai_reply:
             code = ai_reply.split("```python")[1].split("```")[0].strip()
@@ -164,7 +177,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+    
+    # 🚀 在 Bot 阻塞轮询前，启动后台监控线程
+    print("📊 正在拉起资源水位监控线程...")
+    start_monitor_thread(sync_alert_sender)
+
     app = ApplicationBuilder().token(TG_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    print("🚀 Dofi 容器已启动 (动态技能模式)...")
+    
+    print("🚀 Dofi 容器已启动 (动态技能感知 + 监控防护模式)...")
     app.run_polling()
